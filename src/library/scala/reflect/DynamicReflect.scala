@@ -46,12 +46,15 @@ trait DynamicReflect2 extends Dynamic{
   }
 }
 object TestDynamicReflect extends App{
+  class Dog
   object x{
     def test() = 5;
     def testOver(i:Int) = i
     def testOver(s:String) = s
     def foo[T]( t:T ) = t
+    implicit val dog = new Dog
     def bar( s:String )(implicit car:Car) = s + car.toString
+    def baz( s:String )(implicit dog:Dog) = s + dog.toString
   }
 
   val d2 = new DynamicReflect2{
@@ -81,4 +84,6 @@ object TestDynamicReflect extends App{
   // testing implicit parameters
   implicit val car2 = new Car
   println( d.bar( "Yeah, ") )
+  println( x.baz( "Yeah, ") )
+  // println( d.baz( "Yeah, ") ) // FAILS: could not find implicit value for parameter dog
 }
