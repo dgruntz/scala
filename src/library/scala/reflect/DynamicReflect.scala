@@ -11,12 +11,13 @@ trait DynamicReflect extends Dynamic{
   import scala.tools.nsc.Settings
   def applyDynamic( method:String )( args:Any* ) = {
     val class_ = target.getClass
+    var i = 0
     val call = Apply(
       Select(
             TypeApply(
               Select(
                 Select(
-                  Ident(newFreeVar("foo", symbolForName("scala.reflect.DynamicReflect").asType, this))
+                  Ident(newFreeVar("__this", symbolForName("scala.reflect.DynamicReflect").asType, this))
                   , newTermName("target")
                 ), 
                 newTermName("asInstanceOf") )
@@ -24,7 +25,9 @@ trait DynamicReflect extends Dynamic{
             )
         ,newTermName(method)
       )
-      ,args.map( x => Literal(Constant(x)) ).toList // FIXME: this of course only works for constant args
+      ,args.map( x =>
+        Ident(newFreeVar("__arg"+({i+=1;i}.toString), classToType(x.getClass), x))
+      ).toList // FIXME: this of course only works for constant args
     )
     val reporter = new ConsoleReporter(new Settings)
     val toolbox = new ToolBox(reporter,"")
@@ -47,6 +50,8 @@ object TestDynamicReflect extends App{
     def test() = 5;
     def testOver(i:Int) = i
     def testOver(s:String) = s
+    def foo[T]( t:T ) = t
+    def bar( s:String )(implicit car:Car) = s + car.toString
   }
 
   val d2 = new DynamicReflect2{
@@ -56,7 +61,24 @@ object TestDynamicReflect extends App{
   //println( d2.testOver(1) ) // FAILS due to overloading, java.lang.NoSuchMethodException
   
   val d = new DynamicReflect{ override val target = x }
+  // test simple method
   println( d.test )
+  
+  // test overloaded method
   println( d.testOver(1) )
   println( d.testOver("asdf") )
+  
+  // test some non-constant arguments
+  def s = "test"
+  println( d.testOver(s) )
+  println( d.testOver(s + "2") )
+  
+  // test arguments not allowed to be Constant (class other than String)
+  class Car{ override def toString = "I am a car" }
+  val car = new Car
+  println( d.foo(car) )
+
+  // testing implicit parameters
+  implicit val car2 = new Car
+  println( d.bar( "Yeah, ") )
 }
