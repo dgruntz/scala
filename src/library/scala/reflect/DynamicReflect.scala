@@ -4,6 +4,7 @@ package scala.reflect
  */
 trait DynamicReflect extends Dynamic{
   val target : AnyRef = this
+  val target2 = 6
   import scala.reflect.mirror._
   import scala.reflect.runtime.Mirror.ToolBox
   import scala.tools.nsc.reporters._
@@ -12,20 +13,18 @@ trait DynamicReflect extends Dynamic{
     val class_ = target.getClass
     val call = Apply(
       Select(
-          Apply(
             TypeApply(
               Select(
                 Select(
-                  This(newTypeName("DynamicReflect"))
+                  Ident(newFreeVar("foo", symbolForName("scala.reflect.DynamicReflect").asType, this))
                   , newTermName("target")
                 ), 
                 newTermName("asInstanceOf") )
               , List(TypeTree().setType(classToType(class_)))
             )
-          , List() ),
-          newTermName(method)
+        ,newTermName(method)
       )
-      ,args.map( x => Literal(Constant(x)) ).toList
+      ,args.map( x => Literal(Constant(x)) ).toList // FIXME: this of course only works for constant args
     )
     val reporter = new ConsoleReporter(new Settings)
     val toolbox = new ToolBox(reporter,"")
@@ -45,7 +44,7 @@ trait DynamicReflect2 extends Dynamic{
 }
 object TestDynamicReflect extends App{
   object x{
-    def test = 5;
+    def test() = 5;
     def testOver(i:Int) = i
     def testOver(s:String) = s
   }
@@ -53,9 +52,11 @@ object TestDynamicReflect extends App{
   val d2 = new DynamicReflect2{
     override val target = x
   }
-  println( d2.test ) // works, prints 5
-  // println( d2.testOver(1) ) // FAILS due to overloading, java.lang.NoSuchMethodException
+  println( d2.test )
+  //println( d2.testOver(1) ) // FAILS due to overloading, java.lang.NoSuchMethodException
   
   val d = new DynamicReflect{ override val target = x }
-  println( d.test ) // FAILS: DynamicReflect is not an enclosing class
+  println( d.test )
+  println( d.testOver(1) )
+  println( d.testOver("asdf") )
 }
