@@ -42,13 +42,20 @@ trait DynamicReflect2 extends Dynamic{
   import scala.reflect.mirror._
   def applyDynamic( method:String )( args:Any* ) = {
     val symbol = classToType( target.getClass ).member( newTermName(method) )
-    invoke( target, symbol )( args: _* )
+    if(symbol.isOverloaded) {
+      val s2 = symbol.resolveOverloaded(actuals = args.map( a => classToType(a.getClass) ))
+      invoke( target, s2) ( args: _* )
+    } else {
+      invoke( target, symbol )( args: _* )
+    }
   }
 }
 object TestDynamicReflect extends App{
   class Dog
   object x{
     def test() = 5;
+    def getX = 6
+    val xx = 7
     def testOver(i:Int) = i
     def testOver(s:String) = s
     def foo[T]( t:T ) = t
@@ -59,6 +66,10 @@ object TestDynamicReflect extends App{
 
   val d2 = new DynamicReflect2{
     override val target = x
+      override def applyDynamic( method:String )( args:Any* ) = {
+      printf("loggin invocation of %s (with %d args)\n", method, args.length)
+      super.applyDynamic(method)(args : _*)
+    }
   }
   println( d2.test )
   //println( d2.testOver(1) ) // FAILS due to overloading, java.lang.NoSuchMethodException
@@ -86,4 +97,7 @@ object TestDynamicReflect extends App{
   println( d.bar( "Yeah, ") )
   println( x.baz( "Yeah, ") )
   // println( d.baz( "Yeah, ") ) // FAILS: could not find implicit value for parameter dog
+
+  d.getX	// FAILS: reflective compilation has failed
+  d.xx  // FAILS: reflective compilation has failed
 }

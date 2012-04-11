@@ -1,2 +1,2 @@
 package scala.reflect
-class DynamicProxy( override val target: Any ) extends DynamicReflect
+class DynamicProxy( override val target: AnyRef ) extends DynamicReflect
